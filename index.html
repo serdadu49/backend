@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Monitoring Data - Serdadu Puger</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- SheetJS (Excel Export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #D71920; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a80f15; }
+        
+        .bg-pdip { background-color: #D71920; }
+        .text-pdip { color: #D71920; }
+        .hover-bg-pdip:hover { background-color: #a80f15; }
+        
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #D71920;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Table Sticky Header & Column */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background-color: white;
+            z-index: 10;
+            border-right: 2px solid #e5e7eb;
+        }
+        th.sticky-col {
+            z-index: 40; 
+        }
+
+        /* Input Massal Styles */
+        .bulk-input {
+            width: 100%;
+            min-width: 40px;
+            text-align: center;
+            border: 1px solid #d1d5db;
+            padding: 2px;
+            font-size: 0.8rem;
+        }
+        .bulk-input:focus {
+            outline: none;
+            border-color: #D71920;
+            background-color: #fff1f2;
+        }
+        
+        /* Styles for Merged Rows */
+        .merged-cell {
+            vertical-align: middle;
+            background-color: #fff;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Header Dusun Style */
+        .dusun-header {
+            background-color: #eff6ff; /* blue-50 */
+            color: #1e3a8a; /* blue-900 */
+            font-size: 0.7rem;
+            font-weight: bold;
+            border: 1px solid #e5e7eb;
+            text-transform: uppercase;
+            padding: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+
+    <!-- LOGIN PAGE (Default Visible) -->
+    <div id="login-container" class="fixed inset-0 bg-gray-100 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md transform transition-all hover:scale-105 duration-300">
+            <div class="text-center mb-8">
+                <!-- Logo PDI Perjuangan -->
+                <div class="inline-block mb-4">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/1/18/Barata_logo_PDIP.jpg" alt="Logo PDI Perjuangan" class="h-56 w-auto mx-auto drop-shadow-md">
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">SERDADU</h1>
+                <p class="text-gray-500 text-sm mt-1">Sistem Monitoring Data Terpadu</p>
+            </div>
+            
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2 ml-1">Email</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                        <input type="email" id="login-email" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition" placeholder="admin@example.com" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2 ml-1">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input type="password" id="login-password" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition" placeholder="••••••••" required>
+                    </div>
+                </div>
+                
+                <div id="login-error" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 text-sm hidden" role="alert">
+                    <p class="font-bold">Error</p>
+                    <p id="login-error-msg">Pesan error disini.</p>
+                </div>
+
+                <button type="submit" id="btn-login" class="w-full bg-pdip text-white font-bold py-3 px-4 rounded-lg hover:bg-red-800 focus:outline-none focus:shadow-outline transition duration-200 transform active:scale-95 shadow-lg">
+                    MASUK
+                </button>
+                
+                <!-- NEW GUEST LOGIN BUTTON -->
+                <button type="button" onclick="loginGuest()" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:shadow-outline transition duration-200 transform active:scale-95 shadow-lg mt-4">
+                    LOGIN SEBAGAI ANGGOTA
+                </button>
+            </form>
+            <div class="mt-6 text-center text-xs text-gray-400">
+                &copy; 2025 Serdadu Puger Monitoring System
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP (Hidden Initially) -->
+    <div id="app-container" class="flex h-screen overflow-hidden hidden opacity-0 transition-opacity duration-500">
+        <!-- Sidebar -->
+        <aside class="bg-white w-64 flex-shrink-0 border-r border-gray-200 flex flex-col transition-all duration-300 hidden md:flex" id="sidebar">
+            <div class="h-16 flex items-center justify-center border-b border-gray-200 bg-pdip">
+                <h1 class="text-white font-bold text-xl tracking-wider"><i class="fas fa-bullseye mr-2"></i>MONITORING</h1>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-4">
+                <ul class="space-y-1 px-2">
+                    
+                    <!-- MENU GRAFIK (PENGGANTI DASHBOARD) -->
+                    <div class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Grafik</div>
+                    <li><button onclick="nav('grafik_kab')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-grafik_kab"><i class="fas fa-chart-bar w-6"></i> 1. Grafik Kab</button></li>
+                    <li><button onclick="nav('grafik_prov')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-grafik_prov"><i class="fas fa-chart-area w-6"></i> 2. Grafik Prov</button></li>
+                    <li><button onclick="nav('grafik_ri')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-grafik_ri"><i class="fas fa-chart-pie w-6"></i> 3. Grafik RI</button></li>
+
+                    <div class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Struktur</div>
+                    <li><button onclick="nav('pengurus_pac')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-pengurus_pac"><i class="fas fa-users w-6"></i> Pengurus PAC</button></li>
+                    <li><button onclick="nav('pengurus_ranting')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-pengurus_ranting"><i class="fas fa-sitemap w-6"></i> Ranting</button></li>
+                    <li><button onclick="nav('pengurus_anak_ranting')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-pengurus_anak_ranting"><i class="fas fa-network-wired w-6"></i> Anak Ranting</button></li>
+
+                    <!-- MENU PEMILU DIPECAH -->
+                    <div class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Data Pemilu</div>
+                    <li><button onclick="nav('pemilu_kab')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-pemilu_kab"><i class="fas fa-building w-6"></i> 1. KABUPATEN</button></li>
+                    <li><button onclick="nav('pemilu_prov')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-pemilu_prov"><i class="fas fa-landmark w-6"></i> 2. PROVINSI</button></li>
+                    <li><button onclick="nav('pemilu_ri')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-pemilu_ri"><i class="fas fa-flag w-6"></i> 3. RI</button></li>
+                    
+                    <!-- MENU HASIL TPS -->
+                    <div class="px-4 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Hasil TPS</div>
+                    <li><button onclick="nav('hasil_tps_dprd')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-hasil_tps_dprd"><i class="fas fa-poll w-6"></i> TPS DPRD</button></li>
+                    <li><button onclick="nav('hasil_tps_dpr_prov')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-hasil_tps_dpr_prov"><i class="fas fa-poll-h w-6"></i> TPS DPR-PROV</button></li>
+                    <li><button onclick="nav('hasil_tps_dpr_ri')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-hasil_tps_dpr_ri"><i class="fas fa-globe-asia w-6"></i> TPS DPR-RI</button></li>
+                    
+                    <div class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Database</div>
+                    <li><button onclick="nav('desa')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-desa"><i class="fas fa-map-marked-alt w-6"></i> Data Desa</button></li>
+                    <li><button onclick="nav('tokoh')" class="nav-item w-full text-left px-4 py-2 rounded-lg hover:bg-red-50 hover:text-red-700 transition flex items-center text-sm text-gray-600" id="nav-tokoh"><i class="fas fa-user-tie w-6"></i> Data Tokoh</button></li>
+                </ul>
+            </nav>
+            <div class="p-4 border-t border-gray-200">
+                <button onclick="logout()" class="w-full flex items-center justify-center px-4 py-2 border border-red-600 rounded text-red-600 hover:bg-red-50 transition duration-300">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+            <!-- Header Mobile -->
+            <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:hidden z-20">
+                <div class="text-xl font-bold text-pdip">SERDADU</div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="logout()" class="text-red-600">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                    <button onclick="toggleSidebar()" class="text-gray-600 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-6 relative" id="main-container">
+                <!-- Loading Indicator -->
+                <div id="global-loader" class="hidden absolute inset-0 bg-white bg-opacity-80 z-50 flex items-center justify-center">
+                    <div class="loader"></div>
+                </div>
+
+                <!-- Dynamic Content Sections -->
+                <div id="content-area"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 sticky top-0 z-50">
+                <h3 class="text-lg font-bold text-gray-800" id="modal-title">Input Data</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <form id="dynamic-form" class="space-y-4"></form>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3 sticky bottom-0 z-50">
+                <button onclick="closeModal()" type="button" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">SELESAI</button>
+                <button onclick="submitForm()" type="button" class="px-4 py-2 bg-pdip text-white rounded hover:bg-red-800" id="btn-save">SIMPAN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI DAN DATA MASTER ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCPKodSLikj8GmNqmQIJOFj5cHowiEinCs",
+            authDomain: "serdadu-v2.firebaseapp.com",
+            projectId: "serdadu-v2",
+            storageBucket: "serdadu-v2.firebasestorage.app",
+            messagingSenderId: "66160751456",
+            appId: "1:66160751456:web:29a9660d5144711f14a405"
+        };
+
+        const DATA_MASTER = {
+            desa: ["Mojomulyo", "Mojosari", "Puger Kulon", "Puger wetan", "Grenden", "Kasiyan", "Kasiyan Timur", "Mlokorejo", "Bagon", "Wringintelu", "Jambearum", "Wonosari"],
+            // Konfigurasi Jumlah TPS Per Desa
+            tps_limit: {
+                "Mojomulyo": 27,
+                "Mojosari": 36,
+                "Puger Kulon": 46,
+                "Puger wetan": 32,
+                "Grenden": 46,
+                "Kasiyan": 24,
+                "Kasiyan Timur": 38,
+                "Mlokorejo": 31,
+                "Bagon": 17,
+                "Wringintelu": 19,
+                "Jambearum": 23,
+                "Wonosari": 25
+            },
+            jabatan_pac: [
+                "Ketua", "Sekretaris", "Bendahara", 
+                "Wakabid Pemenangan Pemilu", "Wakabid Ideologi dan Kaderisasi", 
+                "Wakabid Keanggotaan, Organisasi, dan Sumberdaya", 
+                "Wakabid Pemerintahan Kecamatan dan Desa", 
+                "Wakabid Pemberantasan Kemiskinan dan Kebudayaan",
+                "Wakabid Penanggulangan Bencana, Pemuda, dan Olahraga",
+                "Wakabid Kesehatan, Pendidikan, Perempuan dan Anak",
+                "Wakabid Koperasi dan UMKM, Buruh Tani, dan Nelayan"
+            ],
+            jabatan_ranting: [
+                "Ketua", "Sekretaris", "Bendahara", "Wakabid Pemenangan Pemilu",
+                "Wakabid Ideologi, Kaderisasi, Keanggotaan, dan Organisasi",
+                "Wakabid Pemerintahan Desa/Kelurahan",
+                "Wakabid Pemberantasan Kemiskinan dan Kebudayaan",
+                "Wakabid Pemuda dan Olahraga",
+                "Wakabid Buruh Tani, dan Nelayan"
+            ],
+            jabatan_anak_ranting: [
+                "Ketua", "Sekretaris", "Bendahara",
+                "Wakabid Pemenangan Pemilu",
+                "Wakabid Ideologi, Kaderisasi, Keanggotaan, dan Organisasi",
+                "Wakabid Pemberantasan Kemiskinan, Pemuda, Olahraga, Perempuan dan Anak"
+            ],
+            jabatan_desa: ["Kades", "staf", "Kasun", "Ketua RW", "Ketua RT"],
+            ketokohan: ["tokoh agama", "tokoh masyarakat", "tokoh pemuda", "tokoh olah raga", "tokoh petani", "tokoh nelayan", "tokoh perempuan", "tokoh spiritual", "tokoh budaya", "tokoh ekonomi", "tokoh politik"],
+            afiliasi: ["PDI Perjuangan", "Gerindra", "GOLKAR", "PKB", "NASDEM", "PKS", "PAN", "PPP", "PSI", "Tidak Tau"],
+            // Urutan Partai Default (DPRD - KABUPATEN)
+            partai_kab: ["PKB", "GERINDRA", "PDI PERJUANGAN", "GOLKAR", "NASDEM", "PKS", "PAN", "PPP"],
+            // Urutan Partai (PROVINSI & RI - Termasuk 3 Partai Tambahan)
+            partai_prov_ri: ["PKB", "GERINDRA", "PDI PERJUANGAN", "GOLKAR", "NASDEM", "PKS", "PAN", "DEMOKRAT", "PERINDO", "PSI", "PPP"],
+            
+            // Warna disesuaikan dengan KEY Uppercase agar cocok dengan input
+            partai_warna: {
+                "PDI PERJUANGAN": "#D71920",
+                "GOLKAR": "#FFFF00",
+                "GERINDRA": "#FFC0CB", 
+                "PKB": "#008000",
+                "NASDEM": "#0000FF",
+                "PKS": "#FFA500", 
+                "PAN": "#87CEEB", 
+                "PPP": "#90EE90", 
+                "DEMOKRAT": "#209cee", 
+                "PERINDO": "#3f51b5", 
+                "PSI": "#e91e63", 
+                "LAINNYA": "#808080"
+            }
+        };
+
+        // --- NEW: DUSUN MAPPING (For TPS Merged Header) ---
+        const DUSUN_MAPPING = {
+            "Mojomulyo": [
+                {name: "DUSUN KALIMALANG", range: [1, 14]},
+                {name: "DUSUN KRAJAN", range: [15, 27]}
+            ],
+            "Mojosari": [
+                {name: "DUSUN KRAJAN", range: [1, 18]},
+                {name: "DUSUN JADUGAN", range: [19, 36]}
+            ],
+            "Puger Kulon": [
+                {name: "DUSUN KRAJAN I", range: [1, 10]},
+                {name: "DUSUN GEDANGAN", range: [11, 18]},
+                {name: "DUSUN KRAJAN II", range: [19, 30]},
+                {name: "DUSUN MANDARAN I", range: [31, 36]},
+                {name: "DUSUN KAUMAN", range: [37, 41]},
+                {name: "DUSUN MANDARAN II", range: [42, 46]}
+            ],
+            "Puger wetan": [ // Lowercase 'w' as per DATA_MASTER
+                {name: "DUSUN KRAJAN", range: [1, 16]},
+                {name: "DUSUN MANDARAN", range: [17, 32]}
+            ],
+            "Grenden": [
+                {name: "DUSUN KARETAN", range: [1, 4]},
+                {name: "DUSUN KARANGSONO", range: [5, 14]},
+                {name: "DUSUN KUMITIR", range: [15, 17]},
+                {name: "DUSUN KRAJAN II", range: [18, 26]},
+                {name: "DUSUN KRAJAN I", range: [27, 40]},
+                {name: "DUSUN KAPURAN", range: [41, 46]}
+            ],
+            "Kasiyan": [
+                {name: "DUSUN KRAJAN", range: [1, 10]},
+                {name: "DUSU GADUNGAN", range: [11, 24]} 
+            ],
+            "Kasiyan Timur": [
+                {name: "DUSUN KRAJAN I", range: [1, 19]},
+                {name: "DUSUN KRAJAN II", range: [20, 38]}
+            ],
+            "Mlokorejo": [
+                {name: "DUSUN KRAJAN BARAT", range: [1, 15]},
+                {name: "DUSUN KRAJAN TIMUR", range: [16, 23]},
+                {name: "DUSUN SEMBUNGAN", range: [24, 31]}
+            ],
+            "Bagon": [
+                {name: "DUSUN KRAJAN", range: [1, 4]},
+                {name: "DUSUN KEDUNG SUMUR", range: [5, 11]},
+                {name: "DUSUN SULING", range: [12, 17]}
+            ],
+            "Wringintelu": [
+                {name: "DUSUN SONOKELING", range: [1, 6]},
+                {name: "DUSUN KRAJAN", range: [7, 12]},
+                {name: "DUSUN PAKEM", range: [13, 19]}
+            ],
+            "Jambearum": [
+                {name: "DUSUN KRAJAN", range: [1, 7]},
+                {name: "DUSUN DARUNGAN", range: [8, 15]},
+                {name: "DUSUN KEDUNG SUMUR", range: [16, 23]}
+            ],
+            "Wonosari": [
+                {name: "DUSUN KRAJAN", range: [1, 11]},
+                {name: "DUSUN PENITIK", range: [12, 20]},
+                {name: "DUSUN LENGKONG", range: [21, 25]}
+            ]
+        };
+
+        // --- HELPER UNTUK MENDAPATKAN WARNA ---
+        function getPartaiColor(partaiName) {
+            if (!partaiName) return DATA_MASTER.partai_warna['LAINNYA'];
+            if (DATA_MASTER.partai_warna[partaiName]) return DATA_MASTER.partai_warna[partaiName];
+            const upper = partaiName.toUpperCase().trim();
+            if (DATA_MASTER.partai_warna[upper]) return DATA_MASTER.partai_warna[upper];
+            return DATA_MASTER.partai_warna['LAINNYA'];
+        }
+
+        // --- INISIALISASI FIREBASE ---
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // --- AUTH & LOGIN LOGIC ---
+        
+        // GLOBAL STATE FOR GUEST
+        let isGuestMode = false;
+
+        auth.onAuthStateChanged(user => {
+            const loginContainer = document.getElementById('login-container');
+            const appContainer = document.getElementById('app-container');
+
+            if (user) {
+                // Regular User Login
+                isGuestMode = false;
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                setTimeout(() => appContainer.classList.remove('opacity-0'), 100); 
+                if(currentState.view.startsWith('grafik_')) nav('grafik_kab'); 
+            } else {
+                // No User, show login unless guest mode is active
+                if (!isGuestMode) {
+                    loginContainer.classList.remove('hidden');
+                    appContainer.classList.add('hidden');
+                    appContainer.classList.add('opacity-0');
+                }
+            }
+        });
+
+        function loginGuest() {
+            isGuestMode = true;
+            document.getElementById('login-container').classList.add('hidden');
+            const app = document.getElementById('app-container');
+            app.classList.remove('hidden');
+            setTimeout(() => app.classList.remove('opacity-0'), 100);
+            nav('grafik_kab');
+        }
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btnLogin = document.getElementById('btn-login');
+            const errorDiv = document.getElementById('login-error');
+            const errorMsg = document.getElementById('login-error-msg');
+
+            btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            btnLogin.disabled = true;
+            errorDiv.classList.add('hidden');
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => { })
+                .catch((error) => {
+                    let message = error.message;
+                    if(error.code === 'auth/wrong-password') message = "Password salah.";
+                    if(error.code === 'auth/user-not-found') message = "Email tidak ditemukan.";
+                    if(error.code === 'auth/invalid-email') message = "Format email salah.";
+                    
+                    errorMsg.innerText = message;
+                    errorDiv.classList.remove('hidden');
+                })
+                .finally(() => {
+                    btnLogin.innerHTML = 'MASUK';
+                    btnLogin.disabled = false;
+                });
+        });
+
+        function logout() {
+            if(confirm('Apakah Anda yakin ingin keluar?')) {
+                if (isGuestMode) {
+                    isGuestMode = false;
+                    // Reload to clear state
+                    window.location.reload();
+                } else {
+                    auth.signOut().then(() => {
+                        document.getElementById('content-area').innerHTML = '';
+                        currentState.view = 'grafik_kab';
+                    });
+                }
+            }
+        }
+
+        // --- STATE MANAGEMENT ---
+        let currentState = {
+            view: 'grafik_kab',
+            filterDesa: '',
+            filterTahun: new Date().getFullYear().toString(),
+            filterDusun: '',
+            editId: null,
+            collection: '',
+            tpsKategori: 'DPRD', 
+            pemiluLevel: 'KABUPATEN', 
+            grafikLevel: 'KABUPATEN', // Untuk filter chart
+            bulkEditMode: false
+        };
+
+        let chartInstance = null;
+        let bulkDataCache = {}; 
+
+        // --- NAVIGASI ---
+        function nav(viewName) {
+            currentState.view = viewName;
+            currentState.editId = null;
+            currentState.bulkEditMode = false;
+            
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-red-50', 'text-red-700', 'font-bold');
+                el.classList.add('text-gray-600');
+            });
+            const activeBtn = document.getElementById(`nav-${viewName}`);
+            if(activeBtn) {
+                activeBtn.classList.add('bg-red-50', 'text-red-700', 'font-bold');
+                activeBtn.classList.remove('text-gray-600');
+            }
+
+            renderContent(viewName);
+            
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        }
+
+        // --- HELPER FUNCTION UNTUK PARTAI ---
+        function getPartaiListForTPS() {
+            if(currentState.tpsKategori === 'DPR-PROV' || currentState.tpsKategori === 'DPR-RI') {
+                return DATA_MASTER.partai_prov_ri;
+            }
+            return DATA_MASTER.partai_kab;
+        }
+
+        // --- RENDER CONTENT ENGINE ---
+        function renderContent(view) {
+            const container = document.getElementById('content-area');
+            container.innerHTML = ''; 
+
+            switch(view) {
+                // GRAFIK SUB-MENUS
+                case 'grafik_kab':
+                    renderDashboard(container, 'KABUPATEN');
+                    break;
+                case 'grafik_prov':
+                    renderDashboard(container, 'PROVINSI');
+                    break;
+                case 'grafik_ri':
+                    renderDashboard(container, 'RI');
+                    break;
+
+                case 'pengurus_pac':
+                    renderTableLayout(container, 'PAC PDI Perjuangan', 'pengurus_pac', 
+                        ['No', 'Jabatan', 'Nama', 'Alamat', 'No Telephone'], 
+                        ['no', 'jabatan', 'nama', 'alamat', 'telp']);
+                    break;
+                case 'pengurus_ranting':
+                    renderTableLayout(container, 'Pengurus Ranting', 'pengurus_ranting', 
+                        ['No','Jabatan', 'Nama','Desa', 'Dusun', 'RW', 'RT', 'No Telephone'], 
+                        ['no','jabatan', 'nama','desa', 'dusun', 'rw', 'rt', 'telp'], true);
+                    break;
+                case 'pengurus_anak_ranting':
+                    renderTableLayout(container, 'Anak Ranting', 'pengurus_anak_ranting',
+                        ['No', 'Jabatan', 'Nama','Desa','Dusun','RW', 'RT', 'No Telephone'],
+                        ['no', 'jabatan', 'nama','desa','dusun','rw', 'rt', 'telp'], true, true);
+                    break;
+                
+                // DATA PEMILU
+                case 'pemilu_kab':
+                    renderPemiluLayout(container, 'KABUPATEN');
+                    break;
+                case 'pemilu_prov':
+                    renderPemiluLayout(container, 'PROVINSI');
+                    break;
+                case 'pemilu_ri':
+                    renderPemiluLayout(container, 'RI');
+                    break;
+                
+                // HASIL TPS
+                case 'hasil_tps_dprd':
+                    renderHasilTPSLayout(container, 'DPRD');
+                    break;
+                case 'hasil_tps_dpr_prov':
+                    renderHasilTPSLayout(container, 'DPR-PROV');
+                    break;
+                case 'hasil_tps_dpr_ri':
+                    renderHasilTPSLayout(container, 'DPR-RI');
+                    break;
+                
+                case 'desa':
+                    renderTableLayout(container, 'Data Desa', 'data_desa',
+                        ['Desa', 'Nama', 'Jabatan', 'Alamat', 'Afiliasi', 'No Telp', 'Dusun', 'RW', 'RT'],
+                        ['desa', 'nama', 'jabatan', 'alamat', 'afiliasi', 'telp', 'dusun', 'rw', 'rt'], true);
+                    break;
+                case 'tokoh':
+                    renderTableLayout(container, 'Data Tokoh', 'data_tokoh',
+                        ['Desa', 'Nama', 'Alamat', 'Afiliasi', 'No Telp', 'Ketokohan', 'Dusun', 'RW', 'RT'],
+                        ['desa', 'nama', 'alamat', 'afiliasi', 'telp', 'ketokohan', 'dusun', 'rw', 'rt'], true);
+                    break;
+            }
+        }
+
+        // --- GRAPHICS DASHBOARD COMPONENT ---
+        function renderDashboard(container, level) {
+            currentState.grafikLevel = level;
+            let extraText = level === 'KABUPATEN' ? 'Data Suara Kabupaten' : (level === 'PROVINSI' ? 'Data Suara Provinsi' : 'Data Suara RI');
+            
+            const html = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded shadow">
+                        <label class="block text-sm font-medium text-gray-700">Filter Desa</label>
+                        <select id="dash-desa" onchange="updateDashboardChart()" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                            <option value="">Semua Desa</option>
+                            ${DATA_MASTER.desa.map(d => `<option value="${d}">${d}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow">
+                        <label class="block text-sm font-medium text-gray-700">Filter Tahun (Untuk Grafik)</label>
+                        <select id="dash-tahun" onchange="updateDashboardChart()" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm p-2 border">
+                            <option value="2024">2024</option>
+                            <option value="2019">2019</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded shadow-lg mb-6">
+                    <h2 class="text-xl font-bold mb-1 text-center">Statistik Perolehan Suara - ${level}</h2>
+                    <p class="text-xs text-center text-gray-500 mb-4">${extraText}</p>
+                    <div class="relative h-[400px] w-full">
+                        <canvas id="voteChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded shadow-lg">
+                    <h2 class="text-xl font-bold mb-6 border-l-4 border-red-600 pl-3">Analisa Kenaikan/Penurunan Suara (${level})</h2>
+                    <div id="analysis-loader" class="text-center py-4 hidden">
+                         <i class="fas fa-spinner fa-spin text-2xl text-red-600"></i> Memuat Analisa...
+                    </div>
+                    <div id="analysis-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <!-- Kartu akan digenerate disini -->
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+            updateDashboardChart();
+        }
+
+        async function updateDashboardChart() {
+            const desa = document.getElementById('dash-desa').value;
+            const tahunSelected = document.getElementById('dash-tahun').value;
+            const analysisLoader = document.getElementById('analysis-loader');
+            const analysisGrid = document.getElementById('analysis-grid');
+            const currentLevel = currentState.grafikLevel;
+
+            if(analysisLoader) analysisLoader.classList.remove('hidden');
+            if(analysisGrid) analysisGrid.innerHTML = '';
+            
+            let query = db.collection('data_pemilu').where('tipe', '==', 'PILEG');
+            if (desa) query = query.where('desa', '==', desa);
+
+            const snapshot = await query.get();
+            const dataMapSelected = {};
+            const data2019 = {};
+            const data2024 = {};
+            
+            snapshot.forEach(doc => {
+                const d = doc.data();
+                const docLevel = d.level || 'KABUPATEN';
+                
+                if (currentLevel === 'KABUPATEN') {
+                    if (docLevel !== 'KABUPATEN') return; 
+                } else {
+                    if (docLevel !== currentLevel) return;
+                }
+
+                const partai = (d.partai || '').toUpperCase().trim();
+                const suara = parseInt(d.suara) || 0;
+                const thn = d.tahun;
+
+                if (thn === '2019') data2019[partai] = (data2019[partai] || 0) + suara;
+                if (thn === '2024') data2024[partai] = (data2024[partai] || 0) + suara;
+                if (thn === tahunSelected) dataMapSelected[partai] = (dataMapSelected[partai] || 0) + suara;
+            });
+
+            let chartData = Object.keys(dataMapSelected).map(key => ({
+                label: key,
+                value: dataMapSelected[key],
+                color: getPartaiColor(key) 
+            }));
+
+            chartData.sort((a, b) => b.value - a.value);
+
+            const labels = chartData.map(d => d.label);
+            const values = chartData.map(d => d.value);
+            const colors = chartData.map(d => d.color);
+
+            const ctx = document.getElementById('voteChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Jumlah Suara ${tahunSelected}`,
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#000',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            if(analysisLoader) analysisLoader.classList.add('hidden');
+            
+            const allFoundParties = new Set([...Object.keys(data2019), ...Object.keys(data2024)]);
+            let analysisHTML = '';
+            const sortedParties = Array.from(allFoundParties).sort((a, b) => (data2024[b] || 0) - (data2024[a] || 0));
+
+            sortedParties.forEach(partai => {
+                const suara19 = data2019[partai] || 0;
+                const suara24 = data2024[partai] || 0;
+                const diff = suara24 - suara19;
+                const color = getPartaiColor(partai);
+                
+                let percent = 0;
+                if (suara19 > 0) {
+                    percent = ((diff / suara19) * 100).toFixed(1);
+                } else if (suara24 > 0) {
+                    percent = 100;
+                }
+
+                let trendColor = 'text-gray-500';
+                let trendIcon = 'fa-minus';
+                let bgClass = 'bg-gray-50';
+                let trendText = 'Stabil';
+
+                if (diff > 0) {
+                    trendColor = 'text-green-600';
+                    trendIcon = 'fa-arrow-up';
+                    bgClass = 'bg-green-50 border-green-200';
+                    trendText = `+${percent}%`;
+                } else if (diff < 0) {
+                    trendColor = 'text-red-600';
+                    trendIcon = 'fa-arrow-down';
+                    bgClass = 'bg-red-50 border-red-200';
+                    trendText = `${percent}%`;
+                }
+
+                if (suara19 > 0 || suara24 > 0) {
+                    analysisHTML += `
+                        <div class="border rounded-lg p-4 shadow-sm hover:shadow-md transition ${bgClass} relative overflow-hidden">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-gray-800 text-sm uppercase truncate w-3/4" title="${partai}">${partai}</h3>
+                                <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <div>
+                                    <div class="text-xs text-gray-500">2019</div>
+                                    <div class="font-semibold text-gray-700">${suara19.toLocaleString()}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">2024</div>
+                                    <div class="font-bold text-lg">${suara24.toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-t border-gray-200 flex justify-between items-center">
+                                <span class="text-xs text-gray-500">Selisih: ${diff > 0 ? '+' : ''}${diff.toLocaleString()}</span>
+                                <span class="font-bold text-sm ${trendColor} flex items-center bg-white px-2 py-1 rounded shadow-sm">
+                                    <i class="fas ${trendIcon} mr-1 text-xs"></i> ${trendText}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            if (analysisHTML === '') {
+                analysisHTML = '<div class="col-span-full text-center text-gray-500 py-4">Belum ada data untuk kategori ini.</div>';
+            }
+
+            if(analysisGrid) analysisGrid.innerHTML = analysisHTML;
+        }
+
+        // --- GENERIC TABLE LAYOUT ---
+        function renderTableLayout(container, title, collectionName, headers, keys, filterDesa = false, filterDusun = false) {
+            currentState.collection = collectionName;
+            
+            let filterHTML = '';
+            if (filterDesa) {
+                filterHTML += `
+                    <select id="filter-desa" onchange="applyFilter('${collectionName}')" class="border p-2 rounded mr-2 mb-2">
+                        <option value="">-- Pilih Desa --</option>
+                        ${DATA_MASTER.desa.map(d => `<option value="${d}">${d}</option>`).join('')}
+                    </select>
+                `;
+            }
+            if (filterDusun) {
+                filterHTML += `<input type="text" id="filter-dusun" onkeyup="applyFilter('${collectionName}')" placeholder="Cari Dusun..." class="border p-2 rounded mr-2 mb-2">`;
+            }
+
+            // GUEST MODE LOGIC: HIDE BUTTONS & ACTION HEADER
+            let buttonsHTML = '';
+            let actionHeaderHTML = '';
+            
+            if (!isGuestMode) {
+                buttonsHTML = `
+                    <button onclick="exportExcel('${collectionName}')" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mr-2 mb-2"><i class="fas fa-file-excel mr-2"></i>Export</button>
+                    <button onclick="openModal('${collectionName}')" class="bg-pdip text-white px-4 py-2 rounded hover:bg-red-800 mb-2"><i class="fas fa-plus mr-2"></i>Tambah Data</button>
+                `;
+                actionHeaderHTML = `<th class="border border-gray-300 px-4 py-2 text-center">Aksi</th>`;
+            }
+
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md min-h-[80vh]">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-red-600 pl-3">${title}</h2>
+                        <div class="flex flex-wrap mt-4 md:mt-0">
+                            ${filterHTML}
+                            ${buttonsHTML}
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto border-collapse border border-gray-200" id="data-table">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    ${headers.map(h => `<th class="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-600">${h}</th>`).join('')}
+                                    ${actionHeaderHTML}
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <tr><td colspan="${headers.length + (isGuestMode ? 0 : 1)}" class="text-center py-4">Memuat data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            loadData(collectionName, keys, filterDesa, filterDusun);
+        }
+
+        // --- PEMILU LAYOUT BARU (MERGED ROWS) ---
+        function renderPemiluLayout(container, level) {
+            currentState.collection = 'data_pemilu';
+            currentState.pemiluLevel = level;
+            
+            let titleText = `Data Pemilu - ${level}`;
+            let extraPartiesInfo = '';
+            
+           
+
+            // GUEST MODE LOGIC
+            let buttonsHTML = '';
+            let actionHeaderHTML = '';
+            
+            if (!isGuestMode) {
+                buttonsHTML = `
+                    <button onclick="exportExcel('data_pemilu')" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mr-2 mb-2"><i class="fas fa-file-excel mr-2"></i>Export</button>
+                    <button onclick="openModal('data_pemilu')" class="bg-pdip text-white px-4 py-2 rounded hover:bg-red-800 mb-2"><i class="fas fa-plus mr-2"></i>Tambah Data</button>
+                `;
+                actionHeaderHTML = `<th class="border px-4 py-2 w-24">Aksi</th>`;
+            }
+
+            // Pilkada Action Header
+            let pilkadaActionHeader = isGuestMode ? '' : '<th class="border px-2 py-1">Aksi</th>';
+
+            container.innerHTML = `
+                 <div class="bg-white p-6 rounded-lg shadow-md min-h-[80vh]">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <div class="flex items-center">
+                            <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-red-600 pl-3">${titleText}</h2>
+                            ${extraPartiesInfo}
+                        </div>
+                        <div class="flex flex-wrap mt-4 md:mt-0">
+                             <select id="filter-desa" onchange="loadPemiluDataNew()" class="border p-2 rounded mr-2 mb-2">
+                                <option value="">-- Pilih Desa --</option>
+                                ${DATA_MASTER.desa.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            </select>
+                             <select id="filter-tahun" onchange="loadPemiluDataNew()" class="border p-2 rounded mr-2 mb-2">
+                                <option value="2024">2024</option>
+                                <option value="2019">2019</option>
+                            </select>
+                            ${buttonsHTML}
+                        </div>
+                    </div>
+
+                    <!-- TABEL PILEG (MERGED) -->
+                    <div class="overflow-x-auto mb-8">
+                        <h3 class="font-bold text-lg mb-2 text-gray-700 flex items-center"><i class="fas fa-list-alt mr-2"></i>Hasil Pileg (${level})</h3>
+                        <table class="min-w-full border border-gray-200 text-sm">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="border px-4 py-2 w-32">Desa</th>
+                                    <th class="border px-4 py-2 w-20">Tahun</th>
+                                    <th class="border px-4 py-2">Jml Penduduk</th>
+                                    <th class="border px-4 py-2">DPT</th>
+                                    <th class="border px-4 py-2">TPS</th>
+                                    <th class="border px-4 py-2">Partai</th>
+                                    <th class="border px-4 py-2">Suara</th>
+                                    ${actionHeaderHTML}
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-pileg">
+                                <tr><td colspan="${isGuestMode ? 7 : 8}" class="text-center py-4 text-gray-500">Memuat data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- TABEL PILKADA (Hanya Tampil di KABUPATEN) -->
+                    ${level === 'KABUPATEN' ? `
+                    <div class="overflow-x-auto">
+                        <h3 class="font-bold text-lg mb-2 text-gray-700 flex items-center"><i class="fas fa-user-friends mr-2"></i>Hasil Pilkada</h3>
+                        <table class="min-w-full border border-gray-200 text-sm">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="border px-2 py-1">Desa</th><th class="border px-2 py-1">Tahun</th><th class="border px-2 py-1">DPT</th>
+                                    <th class="border px-2 py-1">TPS</th><th class="border px-2 py-1">Pemenang</th><th class="border px-2 py-1">Suara</th>${pilkadaActionHeader}
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-pilkada"></tbody>
+                        </table>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            loadPemiluDataNew();
+        }
+
+        // --- HASIL TPS LAYOUT ---
+        function renderHasilTPSLayout(container, kategori) {
+            currentState.collection = 'data_tps_detail';
+            currentState.tpsKategori = kategori;
+            
+            // GUEST MODE LOGIC
+            let buttonsHTML = '';
+            
+            if (!isGuestMode) {
+                buttonsHTML = `
+                    <button onclick="openModal('data_tps_detail')" class="bg-pdip text-white px-4 py-2 rounded hover:bg-red-800 mb-2 mr-2"><i class="fas fa-plus mr-2"></i>Input Per TPS</button>
+                    <button onclick="toggleBulkEditMode()" id="btn-bulk-mode" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-800 mb-2"><i class="fas fa-table mr-2"></i>Mode Input Massal (Copy-Paste)</button>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md min-h-[90vh]">
+                     <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-red-600 pl-3">Hasil TPS (${kategori})</h2>
+                        <div class="flex flex-wrap mt-4 md:mt-0 items-center">
+                             <select id="filter-desa-tps" onchange="loadTPSMatrix()" class="border p-2 rounded mr-2 mb-2 bg-yellow-50 font-bold border-yellow-400">
+                                <option value="">-- Pilih Desa Wajib Diisi --</option>
+                                ${DATA_MASTER.desa.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            </select>
+                            ${buttonsHTML}
+                        </div>
+                    </div>
+                    
+                    <div id="bulk-save-controls" class="hidden flex justify-end mb-4 bg-blue-50 p-3 rounded border border-blue-200">
+                        <span class="mr-4 self-center text-blue-800 text-sm"><i class="fas fa-info-circle"></i> Paste (Ctrl+V) data excel ke kolom tabel. Format harus sesuai (baris partai).</span>
+                        <button onclick="saveBulkData()" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 shadow"><i class="fas fa-save mr-2"></i>SIMPAN SEMUA PERUBAHAN</button>
+                    </div>
+
+                    <div class="mb-6 border-b-4 border-gray-200 pb-6">
+                        <div class="flex justify-between items-center mb-2">
+                             <h3 class="font-bold text-xl text-pdip">PEROLEHAN TPS 2024 (${kategori})</h3>
+                        </div>
+                        <div class="overflow-x-auto border border-gray-300 rounded shadow-inner max-h-[50vh] relative">
+                            <table class="min-w-max text-xs text-center border-collapse">
+                                <thead class="bg-gray-100 sticky top-0 z-30 shadow-sm" id="thead-2024"></thead>
+                                <tbody id="matrix-2024" class="bg-white"><tr><td class="p-4 text-gray-500 text-center">Pilih Desa terlebih dahulu.</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div>
+                         <div class="flex justify-between items-center mb-2">
+                             <h3 class="font-bold text-xl text-gray-600">PEROLEHAN TPS 2019 (${kategori})</h3>
+                        </div>
+                        <div class="overflow-x-auto border border-gray-300 rounded shadow-inner max-h-[50vh] relative">
+                            <table class="min-w-max text-xs text-center border-collapse">
+                                <thead class="bg-gray-100 sticky top-0 z-30 shadow-sm" id="thead-2019"></thead>
+                                <tbody id="matrix-2019" class="bg-white"><tr><td class="p-4 text-gray-500 text-center">Pilih Desa terlebih dahulu.</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- DATA LOADING & FILTERING ---
+        let unsubscribe = null;
+
+        function applyFilter(collectionName) {
+            const headers = getHeadersForCollection(collectionName);
+            const keys = getKeysForCollection(collectionName);
+            loadData(collectionName, keys, !!document.getElementById('filter-desa'), !!document.getElementById('filter-dusun'));
+        }
+
+        function getHeadersForCollection(c) {
+            if(c==='pengurus_pac') return ['No', 'Jabatan', 'Nama', 'Alamat', 'No Telephone'];
+            if(c==='pengurus_ranting') return ['No', 'Jabatan', 'Nama','Desa','Dusun', 'RW', 'RT', 'No Telephone'];
+            if(c==='pengurus_anak_ranting') return ['No', 'Jabatan', 'Nama','Desa', 'Dusun','RW', 'RT', 'No Telephone'];
+            if(c==='data_desa') return ['Desa', 'Nama', 'Jabatan', 'Alamat', 'Afiliasi', 'No Telp', 'Dusun', 'RW', 'RT'];
+            if(c==='data_tokoh') return ['Desa', 'Nama', 'Alamat', 'Afiliasi', 'No Telp', 'Ketokohan', 'Dusun', 'RW', 'RT'];
+            return [];
+        }
+        function getKeysForCollection(c) {
+             if(c==='pengurus_pac') return ['no', 'jabatan', 'nama', 'alamat', 'telp'];
+             if(c==='pengurus_ranting') return ['no', 'jabatan', 'nama','desa','dusun', 'rw', 'rt', 'telp'];
+             if(c==='pengurus_anak_ranting') return ['no', 'jabatan', 'nama','desa', 'dusun','rw', 'rt', 'telp'];
+             if(c==='data_desa') return ['desa', 'nama', 'jabatan', 'alamat', 'afiliasi', 'telp', 'dusun', 'rw', 'rt'];
+             if(c==='data_tokoh') return ['desa', 'nama', 'alamat', 'afiliasi', 'telp', 'ketokohan', 'dusun', 'rw', 'rt'];
+             return [];
+        }
+
+        function loadData(collectionName, keys, useFilterDesa, useFilterDusun) {
+            if (unsubscribe) unsubscribe();
+            
+            let query = db.collection(collectionName);
+            const desaVal = useFilterDesa ? document.getElementById('filter-desa').value : null;
+            if (useFilterDesa && desaVal) query = query.where('desa', '==', desaVal);
+
+            unsubscribe = query.onSnapshot(snapshot => {
+                const tbody = document.getElementById('table-body');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+
+                let docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+
+                if (useFilterDusun) {
+                    const dusunVal = document.getElementById('filter-dusun').value.toLowerCase();
+                    if (dusunVal) docs = docs.filter(d => (d.dusun || '').toLowerCase().includes(dusunVal));
+                }
+
+                if (collectionName === 'data_desa') {
+                    const jabatanOrder = ["Kades", "staf", "Kasun", "Ketua RW", "Ketua RT"];
+                    docs.sort((a, b) => {
+                        if (a.desa < b.desa) return -1;
+                        if (a.desa > b.desa) return 1;
+                        let idxA = jabatanOrder.findIndex(j => j.toLowerCase() === (a.jabatan || '').toLowerCase());
+                        let idxB = jabatanOrder.findIndex(j => j.toLowerCase() === (b.jabatan || '').toLowerCase());
+                        if (idxA === -1) idxA = 999;
+                        if (idxB === -1) idxB = 999;
+                        return idxA - idxB;
+                    });
+                } else {
+                    docs.sort((a, b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
+                }
+
+                if (docs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="${keys.length + (isGuestMode ? 0 : 1)}" class="text-center py-4 text-gray-500">Tidak ada data. Silahkan tambah data.</td></tr>`;
+                    return;
+                }
+
+                docs.forEach(data => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 border-b';
+                    let cells = '';
+                    keys.forEach(key => cells += `<td class="border px-4 py-2 text-sm">${data[key] || '-'}</td>`);
+                    
+                    // GUEST MODE: HIDE ACTIONS
+                    if (!isGuestMode) {
+                        cells += `<td class="border px-4 py-2 text-center">
+                                <button onclick="openModal('${collectionName}', '${data.id}')" class="text-blue-600 hover:text-blue-800 mx-1"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteData('${collectionName}', '${data.id}')" class="text-red-600 hover:text-red-800 mx-1"><i class="fas fa-trash"></i></button>
+                            </td>`;
+                    }
+                    row.innerHTML = cells;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+
+        // --- LOAD DATA PEMILU DENGAN GROUPING (ROWSPAN) ---
+        function loadPemiluDataNew() {
+            if (unsubscribe) unsubscribe();
+            const desa = document.getElementById('filter-desa').value;
+            const tahun = document.getElementById('filter-tahun').value;
+            const currentLevel = currentState.pemiluLevel;
+
+            let query = db.collection('data_pemilu');
+            if(desa) query = query.where('desa', '==', desa);
+            if(tahun) query = query.where('tahun', '==', tahun);
+
+            unsubscribe = query.onSnapshot(snapshot => {
+                const pilegBody = document.getElementById('tbody-pileg');
+                const pilkadaBody = document.getElementById('tbody-pilkada');
+                
+                let docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+
+                const pilegDocs = docs.filter(d => {
+                    if (d.tipe !== 'PILEG') return false;
+                    const docLevel = d.level || 'KABUPATEN'; 
+                    return docLevel === currentLevel;
+                });
+
+                const pilkadaDocs = docs.filter(d => d.tipe === 'PILKADA');
+
+                if (pilegBody) {
+                    pilegBody.innerHTML = '';
+                    if (pilegDocs.length === 0) {
+                        pilegBody.innerHTML = `<tr><td colspan="${isGuestMode ? 7 : 8}" class="text-center py-4 text-gray-500">Tidak ada data Pileg untuk kategori ini.</td></tr>`;
+                    } else {
+                        const groups = {};
+                        pilegDocs.forEach(d => {
+                            const key = `${d.desa}_${d.tahun}`;
+                            if (!groups[key]) groups[key] = [];
+                            groups[key].push(d);
+                        });
+
+                        const partyOrder = (currentLevel === 'PROVINSI' || currentLevel === 'RI') 
+                                           ? DATA_MASTER.partai_prov_ri 
+                                           : DATA_MASTER.partai_kab;
+
+                        const sortedKeys = Object.keys(groups).sort();
+
+                        sortedKeys.forEach(key => {
+                            const items = groups[key];
+                            items.sort((a, b) => {
+                                let idxA = partyOrder.indexOf(a.partai);
+                                let idxB = partyOrder.indexOf(b.partai);
+                                if (idxA === -1) idxA = 999;
+                                if (idxB === -1) idxB = 999;
+                                return idxA - idxB;
+                            });
+
+                            const rowSpan = items.length;
+                            const firstItem = items[0];
+
+                            items.forEach((item, index) => {
+                                const tr = document.createElement('tr');
+                                tr.className = "hover:bg-gray-50";
+
+                                if (index === 0) {
+                                    tr.innerHTML += `
+                                        <td class="border px-4 py-2 merged-cell font-medium" rowspan="${rowSpan}">${firstItem.desa}</td>
+                                        <td class="border px-4 py-2 merged-cell text-center" rowspan="${rowSpan}">${firstItem.tahun}</td>
+                                        <td class="border px-4 py-2 merged-cell text-center" rowspan="${rowSpan}">${firstItem.jml_penduduk || '-'}</td>
+                                        <td class="border px-4 py-2 merged-cell text-center" rowspan="${rowSpan}">${firstItem.dpt}</td>
+                                        <td class="border px-4 py-2 merged-cell text-center" rowspan="${rowSpan}">${firstItem.tps}</td>
+                                    `;
+                                }
+
+                                const color = getPartaiColor(item.partai);
+                                tr.innerHTML += `
+                                    <td class="border px-4 py-2 font-bold" style="color:${color}">${item.partai}</td>
+                                    <td class="border px-4 py-2 text-right">${parseInt(item.suara).toLocaleString()}</td>
+                                `;
+
+                                // GUEST MODE
+                                if (!isGuestMode) {
+                                    tr.innerHTML += `
+                                        <td class="border px-4 py-2 text-center">
+                                            <button onclick="openModal('data_pemilu', '${item.id}')" class="text-blue-500 mr-2"><i class="fas fa-edit"></i></button>
+                                            <button onclick="deleteData('data_pemilu', '${item.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    `;
+                                }
+
+                                pilegBody.appendChild(tr);
+                            });
+                            
+                            const spacerRow = document.createElement('tr');
+                            spacerRow.innerHTML = `<td colspan="${isGuestMode ? 7 : 8}" class="bg-gray-100 h-1 p-0"></td>`;
+                            pilegBody.appendChild(spacerRow);
+                        });
+                    }
+                }
+
+                if (pilkadaBody && currentLevel === 'KABUPATEN') {
+                    pilkadaBody.innerHTML = '';
+                    if (pilkadaDocs.length === 0) {
+                         pilkadaBody.innerHTML = `<tr><td colspan="${isGuestMode ? 6 : 7}" class="text-center py-4 text-gray-500">Tidak ada data Pilkada.</td></tr>`;
+                    } else {
+                        pilkadaDocs.forEach(d => {
+                             let rowHtml = `
+                                <tr class="hover:bg-gray-50 border-b">
+                                    <td class="border px-2 py-1">${d.desa}</td>
+                                    <td class="border px-2 py-1">${d.tahun}</td>
+                                    <td class="border px-2 py-1">${d.dpt}</td>
+                                    <td class="border px-2 py-1">${d.tps}</td>
+                                    <td class="border px-2 py-1 font-bold text-gray-800">${d.pemenang}</td>
+                                    <td class="border px-2 py-1">${d.suara}</td>
+                            `;
+                            
+                            if (!isGuestMode) {
+                                rowHtml += `
+                                    <td class="border px-2 py-1 text-center">
+                                        <button onclick="openModal('data_pemilu', '${d.id}')" class="text-blue-500 mr-2"><i class="fas fa-edit"></i></button>
+                                        <button onclick="deleteData('data_pemilu', '${d.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                `;
+                            }
+
+                            rowHtml += `</tr>`;
+                            pilkadaBody.innerHTML += rowHtml;
+                        });
+                    }
+                }
+            });
+        }
+
+        // --- UPDATED: LOAD TPS MATRIX DENGAN HEADER DUSUN MERGED & GARIS BATAS ---
+        function loadTPSMatrix() {
+            if (unsubscribe) unsubscribe();
+            const desa = document.getElementById('filter-desa-tps').value;
+            const kategori = currentState.tpsKategori;
+
+            if(!desa) {
+                document.getElementById('matrix-2024').innerHTML = '<tr><td colspan="50" class="p-4 text-center text-gray-500">Pilih Desa terlebih dahulu.</td></tr>';
+                document.getElementById('matrix-2019').innerHTML = '<tr><td colspan="50" class="p-4 text-center text-gray-500">Pilih Desa terlebih dahulu.</td></tr>';
+                return;
+            }
+
+            const maxTps = DATA_MASTER.tps_limit[desa] || 46;
+            const dusunList = DUSUN_MAPPING[desa] || [];
+
+            // --- GENERATE DOUBLE ROW HEADER ---
+            const generateHeader = () => {
+                // Determine boundaries
+                const boundaryTps = new Set();
+                dusunList.forEach((d, index) => {
+                    if(index < dusunList.length - 1) boundaryTps.add(d.range[1]);
+                });
+
+                // ROW 1: Dusun Header (Merged)
+                let row1 = `<tr><th class="border p-2 sticky-col min-w-[120px] bg-white text-gray-800 font-extrabold" rowspan="2" style="vertical-align:middle;">PARTAI</th>`;
+                
+                if (dusunList.length > 0) {
+                    dusunList.forEach((d, index) => {
+                        const count = d.range[1] - d.range[0] + 1;
+                        // Add border style to header 1
+                        const style = index < dusunList.length - 1 ? 'border-right: 4px solid #000;' : '';
+                        row1 += `<th class="dusun-header" colspan="${count}" style="${style}">${d.name}</th>`;
+                    });
+                } else {
+                    row1 += `<th class="bg-gray-50 border-b border-gray-200" colspan="${maxTps}"></th>`;
+                }
+                row1 += `</tr>`;
+
+                // ROW 2: Nomor TPS
+                let row2 = `<tr>`;
+                for(let i=1; i<=maxTps; i++) {
+                    const style = boundaryTps.has(i) ? 'border-right: 4px solid #000;' : '';
+                    row2 += `<th class="border px-1 min-w-[35px] bg-gray-50 text-xs font-semibold text-gray-600" style="${style}">${i}</th>`;
+                }
+                row2 += `</tr>`;
+                
+                return row1 + row2;
+            };
+
+            document.getElementById('thead-2024').innerHTML = generateHeader();
+            document.getElementById('thead-2019').innerHTML = generateHeader();
+
+            unsubscribe = db.collection('data_tps_detail').where('desa', '==', desa).onSnapshot(snapshot => {
+                let data2024 = {};
+                let data2019 = {};
+                
+                const partaiList = getPartaiListForTPS();
+
+                partaiList.forEach(p => {
+                    data2024[p] = Array(maxTps + 1).fill({val:0, id:null});
+                    data2019[p] = Array(maxTps + 1).fill({val:0, id:null});
+                });
+
+                bulkDataCache = { '2024': {}, '2019': {} };
+
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    let dataKategori = d.kategori || 'DPRD';
+                    
+                    if (dataKategori === kategori) {
+                        const tps = parseInt(d.no_tps);
+                        const partai = d.partai;
+                        const suara = parseInt(d.suara) || 0;
+                        
+                        if(tps >= 1 && tps <= maxTps && partaiList.includes(partai)) {
+                            if(d.tahun === '2024') data2024[partai][tps] = {val: suara, id: doc.id};
+                            if(d.tahun === '2019') data2019[partai][tps] = {val: suara, id: doc.id};
+                        }
+                    }
+                });
+
+                bulkDataCache['2024'] = data2024;
+                bulkDataCache['2019'] = data2019;
+
+                renderMatrixRows('matrix-2024', data2024, maxTps, '2024');
+                renderMatrixRows('matrix-2019', data2019, maxTps, '2019');
+            });
+        }
+
+        function renderMatrixRows(elementId, dataSet, maxTps, year) {
+            const tbody = document.getElementById(elementId);
+            tbody.innerHTML = '';
+            
+            const isBulk = currentState.bulkEditMode;
+            const partaiList = getPartaiListForTPS();
+
+            // --- HITUNG BATAS DUSUN UNTUK GARIS TEBAL ---
+            const desa = document.getElementById('filter-desa-tps').value;
+            const dusunList = DUSUN_MAPPING[desa] || [];
+            const boundaryTps = new Set();
+            dusunList.forEach((d, index) => {
+                 if(index < dusunList.length - 1) boundaryTps.add(d.range[1]);
+            });
+            // -------------------------------------------
+
+            partaiList.forEach(partai => {
+                // Gunakan helper getPartaiColor untuk konsistensi
+                let color = getPartaiColor(partai);
+                let rowHTML = `<tr class="hover:bg-gray-50 border-b">
+                    <td class="border p-2 sticky-col font-bold text-left whitespace-nowrap text-xs" style="border-left: 4px solid ${color}">${partai}</td>`;
+                
+                for(let i=1; i<=maxTps; i++) {
+                    let cellData = dataSet[partai][i];
+                    let val = cellData.val;
+                    let docId = cellData.id;
+
+                    // STYLE GARIS TEBAL
+                    let tdStyle = boundaryTps.has(i) ? 'border-right: 4px solid #000;' : 'border-right: 1px solid #e5e7eb;';
+
+                    if (isBulk) {
+                        rowHTML += `<td class="border-b border-t" style="${tdStyle} padding:0;">
+                            <input type="number" 
+                                class="bulk-input" 
+                                data-partai="${partai}" 
+                                data-tps="${i}" 
+                                data-year="${year}" 
+                                data-docid="${docId || ''}"
+                                value="${val === 0 ? '' : val}"
+                                onpaste="handlePaste(event, this)">
+                        </td>`;
+                    } else {
+                        let displayVal = val === 0 ? '-' : val;
+                        let cellClass = val > 0 ? 'font-bold text-gray-800' : 'text-gray-300';
+                        // Add border classes for top/bottom, handle right via style
+                        rowHTML += `<td class="border-b border-t px-1 ${cellClass}" style="${tdStyle}">${displayVal}</td>`;
+                    }
+                }
+                rowHTML += '</tr>';
+                tbody.innerHTML += rowHTML;
+            });
+        }
+
+        function toggleBulkEditMode() {
+            currentState.bulkEditMode = !currentState.bulkEditMode;
+            const btn = document.getElementById('btn-bulk-mode');
+            const controls = document.getElementById('bulk-save-controls');
+            
+            if(currentState.bulkEditMode) {
+                btn.innerHTML = '<i class="fas fa-times mr-2"></i>Batal Edit';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-800');
+                btn.classList.add('bg-gray-500', 'hover:bg-gray-700');
+                controls.classList.remove('hidden');
+            } else {
+                btn.innerHTML = '<i class="fas fa-table mr-2"></i>Mode Input Massal (Copy-Paste)';
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-800');
+                btn.classList.remove('bg-gray-500', 'hover:bg-gray-700');
+                controls.classList.add('hidden');
+            }
+            
+            const desa = document.getElementById('filter-desa-tps').value;
+            const maxTps = DATA_MASTER.tps_limit[desa] || 46;
+            renderMatrixRows('matrix-2024', bulkDataCache['2024'], maxTps, '2024');
+            renderMatrixRows('matrix-2019', bulkDataCache['2019'], maxTps, '2019');
+        }
+
+        function handlePaste(e, targetInput) {
+            e.preventDefault();
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedData = clipboardData.getData('Text');
+            
+            const rows = pastedData.trim().split(/\r\n|\n|\r/);
+            const startPartai = targetInput.getAttribute('data-partai');
+            const startTps = parseInt(targetInput.getAttribute('data-tps'));
+            const year = targetInput.getAttribute('data-year');
+            const desa = document.getElementById('filter-desa-tps').value;
+            const maxTps = DATA_MASTER.tps_limit[desa] || 46;
+            
+            const partaiKeys = getPartaiListForTPS();
+            let startPartaiIdx = partaiKeys.indexOf(startPartai);
+
+            rows.forEach((rowStr, rIdx) => {
+                const cols = rowStr.split('\t');
+                const currentPartai = partaiKeys[startPartaiIdx + rIdx];
+                
+                if (currentPartai) {
+                    cols.forEach((val, cIdx) => {
+                        const currentTps = startTps + cIdx;
+                        if (currentTps <= maxTps) {
+                            const inputEl = document.querySelector(`input[data-partai="${currentPartai}"][data-tps="${currentTps}"][data-year="${year}"]`);
+                            if (inputEl) {
+                                inputEl.value = val.trim();
+                                inputEl.style.backgroundColor = '#dcfce7'; 
+                                setTimeout(() => inputEl.style.backgroundColor = '', 1000);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        async function saveBulkData() {
+            const desa = document.getElementById('filter-desa-tps').value;
+            if(!desa) return;
+
+            const inputs = document.querySelectorAll('.bulk-input');
+            const batch = db.batch();
+            let changeCount = 0;
+
+            const btnSave = document.querySelector('#bulk-save-controls button');
+            const originalText = btnSave.innerHTML;
+            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+            btnSave.disabled = true;
+
+            inputs.forEach(input => {
+                const val = input.value === '' ? 0 : parseInt(input.value);
+                const docId = input.getAttribute('data-docid');
+                const partai = input.getAttribute('data-partai');
+                const tps = input.getAttribute('data-tps');
+                const year = input.getAttribute('data-year');
+                const cachedVal = bulkDataCache[year][partai][tps].val;
+
+                if (val !== cachedVal) {
+                    const dataPayload = {
+                        desa: desa,
+                        kategori: currentState.tpsKategori,
+                        tahun: year,
+                        partai: partai,
+                        no_tps: tps,
+                        suara: val
+                    };
+
+                    if (docId) {
+                        const ref = db.collection('data_tps_detail').doc(docId);
+                        batch.update(ref, { suara: val });
+                    } else if (val > 0) {
+                        const newRef = db.collection('data_tps_detail').doc();
+                        batch.set(newRef, dataPayload);
+                    }
+                    changeCount++;
+                }
+            });
+
+            if (changeCount > 0) {
+                try {
+                    await batch.commit();
+                    alert(`Berhasil menyimpan ${changeCount} perubahan data.`);
+                    toggleBulkEditMode(); 
+                } catch (e) {
+                    console.error(e);
+                    alert('Gagal menyimpan batch: ' + e.message);
+                }
+            } else {
+                alert('Tidak ada perubahan data yang terdeteksi.');
+            }
+            btnSave.innerHTML = originalText;
+            btnSave.disabled = false;
+        }
+
+        // --- EXPORT EXCEL ---
+        function exportExcel(colName) {
+            let table = document.getElementById("data-table");
+            if (colName === 'data_pemilu') {
+                const wb = XLSX.utils.book_new();
+                
+                const pilegTable = document.querySelector("#tbody-pileg").parentNode;
+                const pilegSheet = XLSX.utils.table_to_sheet(pilegTable);
+                XLSX.utils.book_append_sheet(wb, pilegSheet, `Pileg ${currentState.pemiluLevel}`);
+
+                if(currentState.pemiluLevel === 'KABUPATEN') {
+                    const pilkadaTable = document.querySelector("#tbody-pilkada");
+                    if(pilkadaTable) {
+                        const pilkadaSheet = XLSX.utils.table_to_sheet(pilkadaTable.parentNode);
+                        XLSX.utils.book_append_sheet(wb, pilkadaSheet, "Pilkada");
+                    }
+                }
+                
+                XLSX.writeFile(wb, `Export_Pemilu_${currentState.pemiluLevel}_${new Date().getTime()}.xlsx`);
+            } else if (colName === 'data_tps_detail') {
+                 const wb = XLSX.utils.book_new();
+                 const tbl2024 = document.querySelector("#matrix-2024").parentNode.parentNode;
+                 const sheet2024 = XLSX.utils.table_to_sheet(tbl2024);
+                 XLSX.utils.book_append_sheet(wb, sheet2024, "2024");
+                 const tbl2019 = document.querySelector("#matrix-2019").parentNode.parentNode;
+                 const sheet2019 = XLSX.utils.table_to_sheet(tbl2019);
+                 XLSX.utils.book_append_sheet(wb, sheet2019, "2019");
+
+                 XLSX.writeFile(wb, `Export_TPS_${currentState.tpsKategori}_${new Date().getTime()}.xlsx`);
+            } else {
+                const wb = XLSX.utils.table_to_book(table, {sheet: "Sheet 1"});
+                XLSX.writeFile(wb, `Export_${colName}_${new Date().getTime()}.xlsx`);
+            }
+        }
+
+        // --- MODAL & CRUD FUNCTIONS (DITAMBAHKAN KEMBALI UNTUK MEMPERBAIKI MASALAH) ---
+
+        function openModal(collection, id = null) {
+            currentState.collection = collection;
+            currentState.editId = id;
+            
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = id ? 'Edit Data' : 'Tambah Data';
+            
+            const formContainer = document.getElementById('dynamic-form');
+            formContainer.innerHTML = generateFormFields(collection);
+            
+            if (id) {
+                // Load data for edit
+                db.collection(collection).doc(id).get().then(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        Object.keys(data).forEach(key => {
+                            const el = document.getElementById(`input-${key}`);
+                            if (el) el.value = data[key];
+                        });
+                        // Trigger logic change for pemilu type if needed
+                        if(collection === 'data_pemilu' && data.tipe) togglePemiluFields(data.tipe);
+                    }
+                });
+            } else {
+                 // Default logic for new data
+                 if(collection === 'data_pemilu') togglePemiluFields('PILEG');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('dynamic-form').innerHTML = '';
+        }
+
+        function togglePemiluFields(val) {
+           const pilegFields = document.getElementById('pileg-fields');
+           const pilkadaFields = document.getElementById('pilkada-fields');
+           if(!pilegFields || !pilkadaFields) return;
+
+           if(val === 'PILEG') {
+               pilegFields.classList.remove('hidden');
+               pilkadaFields.classList.add('hidden');
+           } else {
+               pilegFields.classList.add('hidden');
+               pilkadaFields.classList.remove('hidden');
+           }
+        }
+
+        function generateFormFields(collection) {
+            // Helper to create input HTML
+            const createInput = (label, id, type='text', options=null, extraAttr='') => {
+                let inputHtml = '';
+                if (options) {
+                    inputHtml = `<select id="input-${id}" class="w-full border p-2 rounded" ${extraAttr}>
+                        <option value="">-- Pilih ${label} --</option>
+                        ${options.map(o => `<option value="${o}">${o}</option>`).join('')}
+                    </select>`;
+                } else {
+                    inputHtml = `<input type="${type}" id="input-${id}" class="w-full border p-2 rounded" placeholder="${label}" ${extraAttr}>`;
+                }
+                return `<div><label class="block text-sm font-bold text-gray-700 mb-1">${label}</label>${inputHtml}</div>`;
+            };
+
+            let fields = '';
+            
+            // Common fields logic based on collection
+            if (['pengurus_pac', 'pengurus_ranting', 'pengurus_anak_ranting'].includes(collection)) {
+                fields += createInput('No Urut', 'no', 'number');
+                
+                let jabatanOpts = [];
+                if (collection === 'pengurus_pac') jabatanOpts = DATA_MASTER.jabatan_pac;
+                if (collection === 'pengurus_ranting') jabatanOpts = DATA_MASTER.jabatan_ranting;
+                if (collection === 'pengurus_anak_ranting') jabatanOpts = DATA_MASTER.jabatan_anak_ranting;
+                
+                fields += createInput('Jabatan', 'jabatan', 'text', jabatanOpts);
+                fields += createInput('Nama Lengkap', 'nama');
+
+                // Tambahan: Desa untuk semua struktur
+                fields += createInput('Desa', 'desa', 'text', DATA_MASTER.desa);
+
+                if (collection === 'pengurus_pac') {
+                    fields += createInput('Alamat', 'alamat');
+                }
+
+                if (collection === 'pengurus_ranting') {
+				    fields += createInput('Dusun', 'dusun');
+                    fields += `<div class="grid grid-cols-2 gap-2">
+                        ${createInput('RW', 'rw')}
+                        ${createInput('RT', 'rt')}
+                    </div>`;
+                }
+
+                if (collection === 'pengurus_anak_ranting') {
+                    // Dusun hanya untuk Anak Ranting
+                    fields += createInput('Dusun', 'dusun');
+
+                    fields += `<div class="grid grid-cols-2 gap-2">
+                        ${createInput('RW', 'rw')}
+                        ${createInput('RT', 'rt')}
+                    </div>`;
+                }
+
+                fields += createInput('No Telephone', 'telp');
+            }
+            
+            else if (['data_desa', 'data_tokoh'].includes(collection)) {
+                fields += createInput('Desa', 'desa', 'text', DATA_MASTER.desa);
+                fields += createInput('Nama', 'nama');
+                
+                if (collection === 'data_desa') fields += createInput('Jabatan', 'jabatan', 'text', DATA_MASTER.jabatan_desa);
+                if (collection === 'data_tokoh') fields += createInput('Ketokohan', 'ketokohan', 'text', DATA_MASTER.ketokohan);
+                
+                fields += createInput('Alamat', 'alamat');
+                fields += createInput('Afiliasi Politik', 'afiliasi', 'text', DATA_MASTER.afiliasi);
+                fields += createInput('No Telephone', 'telp');
+                if (collection === 'data_desa') fields += createInput('Dusun', 'dusun');
+                fields += `<div class="grid grid-cols-2 gap-2">
+                    ${createInput('RW', 'rw')}
+                    ${createInput('RT', 'rt')}
+                 </div>`;
+            }
+            
+            else if (collection === 'data_pemilu') {
+                fields += createInput('Tipe Pemilu', 'tipe', 'text', ['PILEG', 'PILKADA'], 'onchange="togglePemiluFields(this.value)"');
+                fields += createInput('Tingkat', 'level', 'text', ['KABUPATEN', 'PROVINSI', 'RI']);
+                fields += createInput('Desa', 'desa', 'text', DATA_MASTER.desa);
+                fields += createInput('Tahun', 'tahun', 'number'); 
+                
+                fields += `<div class="grid grid-cols-3 gap-2">
+                    ${createInput('Jml Penduduk', 'jml_penduduk', 'number')}
+                    ${createInput('DPT', 'dpt', 'number')}
+                    ${createInput('Jml TPS', 'tps', 'number')}
+                </div>`;
+                
+                const partaiOpts = [...DATA_MASTER.partai_prov_ri, "LAINNYA"];
+                
+                fields += `<div id="pileg-fields" class="border-t pt-2 mt-2">
+                    <h4 class="font-bold text-gray-500 mb-2">Data Suara (Pileg)</h4>
+                    ${createInput('Partai', 'partai', 'text', partaiOpts)}
+                    ${createInput('Perolehan Suara', 'suara', 'number')}
+                </div>`;
+                
+                fields += `<div id="pilkada-fields" class="border-t pt-2 mt-2 hidden">
+                    <h4 class="font-bold text-gray-500 mb-2">Data Pilkada</h4>
+                    ${createInput('Nama Pemenang', 'pemenang')}
+                    ${createInput('Perolehan Suara', 'suara_pilkada', 'number', null, 'id="input-suara"')} <!-- Reusing ID for simplicity/conflict check -->
+                </div>`;
+            }
+            
+            else if (collection === 'data_tps_detail') {
+                fields += createInput('Kategori', 'kategori', 'text', ['DPRD', 'DPR-PROV', 'DPR-RI']);
+                fields += createInput('Tahun', 'tahun', 'select', ['2024', '2019']);
+                fields += createInput('Desa', 'desa', 'text', DATA_MASTER.desa);
+                fields += createInput('Nomor TPS', 'no_tps', 'number');
+                fields += createInput('Partai', 'partai', 'text', DATA_MASTER.partai_prov_ri);
+                fields += createInput('Jumlah Suara', 'suara', 'number');
+            }
+
+            return fields;
+        }
+
+        async function submitForm() {
+            const btn = document.getElementById('btn-save');
+            btn.disabled = true;
+            btn.innerHTML = 'Menyimpan...';
+
+            const inputs = document.querySelectorAll('#dynamic-form input, #dynamic-form select');
+            const data = {};
+            
+            inputs.forEach(input => {
+                // Skip if hidden
+                if(input.offsetParent === null) return;
+                
+                const key = input.id.replace('input-', '');
+                // Special handling for suara pilkada reuse
+                if(key === 'suara_pilkada') data['suara'] = input.value;
+                else data[key] = input.value;
+            });
+
+            try {
+                if (currentState.editId) {
+                    await db.collection(currentState.collection).doc(currentState.editId).update(data);
+                } else {
+                    await db.collection(currentState.collection).add(data);
+                }
+                // closeModal(); // Disabled in PRO version
+            } catch (e) {
+                alert('Gagal menyimpan: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'SIMPAN';
+            }
+        }
+
+        function deleteData(collection, id) {
+            if(confirm('Yakin ingin menghapus data ini?')) {
+                db.collection(collection).doc(id).delete().catch(e => alert(e.message));
+            }
+        }
+    </script>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed top-5 right-5 space-y-2 z-50"></div>
+
+<script>
+
+// ====== TOAST FUNCTION ======
+function showToast(message, type = "success") {
+    const toast = document.createElement("div");
+    toast.className = `
+        px-4 py-2 rounded shadow-lg text-white
+        ${type === "success" ? "bg-green-500" : "bg-red-500"}
+        transition-opacity duration-300
+    `;
+    toast.innerText = message;
+    document.getElementById("toastContainer").appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+
+// ====== AUTO FILTER DUSUN ======
+document.addEventListener("change", function(e) {
+    if (e.target && e.target.id === "desaSelect") {
+        const desa = e.target.value;
+        const dusunSelect = document.getElementById("dusunSelect");
+        if (!dusunSelect) return;
+
+        dusunSelect.innerHTML = '<option value="">Pilih Dusun</option>';
+
+        if (typeof DATA_MASTER !== "undefined" &&
+            DATA_MASTER.dusun_mapping &&
+            DATA_MASTER.dusun_mapping[desa]) {
+
+            DATA_MASTER.dusun_mapping[desa].forEach(dusun => {
+                dusunSelect.innerHTML += 
+                    `<option value="${dusun}">${dusun}</option>`;
+            });
+        }
+    }
+});
+
+// ====== VALIDASI NOMOR TELEPON ======
+document.addEventListener("input", function(e) {
+    if (e.target && e.target.name === "no_telp") {
+        let value = e.target.value.replace(/\D/g, "");
+        if (value.startsWith("8")) {
+            value = "0" + value;
+        }
+        e.target.value = value;
+    }
+});
+
+</script>
+
+</body>
+</html>
